@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  finance:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/arm64
+    container_name: personal-finance
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: /data/finance.db
+      # Override these via a .env file or shell environment before deploying
+      FINANCE_USERNAME: ${FINANCE_USERNAME:-admin}
+      FINANCE_PASSWORD: ${FINANCE_PASSWORD:-changeme}
+    volumes:
+      # Named volume keeps the SQLite file across container rebuilds
+      - finance_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  finance_data:
+    driver: local
