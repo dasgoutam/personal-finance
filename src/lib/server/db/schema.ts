@@ -80,6 +80,7 @@ export const transactions = sqliteTable('transactions', {
 	date: text('date').notNull(),
 	description: text('description').notNull(),
 	notes: text('notes'),
+	isStarred: integer('is_starred', { mode: 'boolean' }).notNull().default(false),
 	createdAt: integer('created_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`),

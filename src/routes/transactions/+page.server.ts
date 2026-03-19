@@ -14,6 +14,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			txDate: transactions.date,
 			txDescription: transactions.description,
 			txNotes: transactions.notes,
+			txIsStarred: transactions.isStarred,
 			jeId: journalEntries.id,
 			jeAmount: journalEntries.amount,
 			jeCurrency: journalEntries.currency,
@@ -32,6 +33,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 			date: string;
 			description: string;
 			notes: string | null;
+			isStarred: boolean;
 			entries: { id: number; amount: number; currency: string; accountId: number; accountName: string }[];
 		}
 	>();
@@ -43,6 +45,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				date: row.txDate,
 				description: row.txDescription,
 				notes: row.txNotes,
+				isStarred: row.txIsStarred,
 				entries: []
 			});
 		}
@@ -138,6 +141,21 @@ export const actions: Actions = {
 			return fail(400, { error: (e as Error).message });
 		}
 
+		redirect(302, '/transactions');
+	},
+
+	toggleStar: async ({ request, locals }) => {
+		if (!locals.user) redirect(302, '/login');
+
+		const data = await request.formData();
+		const idRaw = data.get('txId');
+		if (typeof idRaw !== 'string' || !idRaw) return fail(400, { error: 'Missing transaction ID.' });
+		const txId = parseInt(idRaw, 10);
+
+		const [tx] = db.select({ isStarred: transactions.isStarred }).from(transactions).where(eq(transactions.id, txId)).all();
+		if (!tx) return fail(404, { error: 'Transaction not found.' });
+
+		db.update(transactions).set({ isStarred: !tx.isStarred }).where(eq(transactions.id, txId)).run();
 		redirect(302, '/transactions');
 	},
 

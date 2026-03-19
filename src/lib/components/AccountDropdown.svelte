@@ -1,9 +1,11 @@
 <script lang="ts">
-	export let value: string;           // bound selected account id (string)
-	export let formId: string;          // HTML form id to associate the hidden input with
-	export let name: string;            // field name
+	import { tick } from 'svelte';
+
+	export let value: string;
+	export let formId: string;
+	export let name: string;
 	export let placeholder = 'Account…';
-	export let disabledId: string = ''; // account id to disable (e.g. the "from" id in the "to" dropdown)
+	export let disabledId: string = '';
 	export let borderClass = 'border-blue-300';
 	export let ringClass   = 'focus:ring-blue-500';
 
@@ -22,9 +24,39 @@
 	};
 
 	let open = false;
+	let search = '';
+	let buttonEl: HTMLButtonElement;
+	let dropdownStyle = '';
+	let searchEl: HTMLInputElement;
 
 	$: selected = grouped.flatMap((g) => g.accounts).find((a) => String(a.id) === value);
 	$: selectedCategory = grouped.find((g) => g.accounts.some((a) => String(a.id) === value))?.category ?? '';
+
+	$: filtered = grouped
+		.map((g) => ({
+			...g,
+			accounts: g.accounts.filter((a) =>
+				!search || a.name.toLowerCase().includes(search.toLowerCase())
+			)
+		}))
+		.filter((g) => g.accounts.length > 0);
+
+	async function openDropdown() {
+		open = true;
+		search = '';
+		// Position using fixed coords from button rect
+		await tick();
+		const rect = buttonEl.getBoundingClientRect();
+		const spaceBelow = window.innerHeight - rect.bottom;
+		if (spaceBelow < 220 && rect.top > 220) {
+			// Open upward
+			dropdownStyle = `position:fixed;bottom:${window.innerHeight - rect.top}px;left:${rect.left}px;min-width:${rect.width}px;`;
+		} else {
+			dropdownStyle = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left}px;min-width:${rect.width}px;`;
+		}
+		await tick();
+		searchEl?.focus();
+	}
 
 	function pick(id: number) {
 		value = String(id);
@@ -36,8 +68,9 @@
 	<input type="hidden" {name} form={formId} {value} />
 
 	<button
+		bind:this={buttonEl}
 		type="button"
-		on:click={() => (open = !open)}
+		on:click={openDropdown}
 		class="w-full rounded-lg border {borderClass} bg-white dark:bg-gray-700 dark:text-white px-2 py-1.5 text-xs text-left
 		       flex items-center justify-between gap-1 focus:outline-none focus:ring-2 {ringClass}"
 	>
@@ -56,38 +89,57 @@
 	</button>
 
 	{#if open}
-		<!-- Dropdown panel -->
-		<div class="absolute z-30 mt-1 min-w-[180px] w-max max-w-xs rounded-xl border border-gray-200 dark:border-gray-700
-		            bg-white dark:bg-gray-800 shadow-lg py-1 left-0">
-			{#each grouped as group}
-				<div class="px-2 pt-2 pb-0.5">
-					<span class="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-1">
-						{group.label}
-					</span>
-				</div>
-				{#each group.accounts as acct}
-					<!-- svelte-ignore a11y-click-events-have-key-events -->
-					<!-- svelte-ignore a11y-no-static-element-interactions -->
-					<div
-						on:click={() => { if (String(acct.id) !== disabledId) pick(acct.id); }}
-						class="mx-1 px-2 py-1.5 rounded-lg flex items-center justify-between gap-3
-						       {String(acct.id) === disabledId
-						           ? 'opacity-30 cursor-not-allowed'
-						           : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700'}"
-					>
-						<span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium
-						             {CATEGORY_COLORS[group.category] ?? 'bg-gray-100 text-gray-600'}">
-							{acct.name}
+		<!-- Fixed-position dropdown panel — never clipped by overflow -->
+		<div
+			style={dropdownStyle}
+			class="z-50 w-max max-w-xs rounded-xl border border-gray-200 dark:border-gray-700
+			       bg-white dark:bg-gray-800 shadow-xl py-1"
+		>
+			<!-- Search -->
+			<div class="px-2 pb-1 pt-1.5">
+				<input
+					bind:this={searchEl}
+					bind:value={search}
+					type="text"
+					placeholder="Search…"
+					class="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700
+					       dark:text-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+				/>
+			</div>
+
+			{#if filtered.length === 0}
+				<p class="px-3 py-3 text-xs text-gray-400 dark:text-gray-500 italic">No accounts match</p>
+			{:else}
+				{#each filtered as group}
+					<div class="px-2 pt-1.5 pb-0.5">
+						<span class="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-1">
+							{group.label}
 						</span>
-						<span class="text-[10px] text-gray-400 dark:text-gray-500 font-mono shrink-0">{acct.currency}</span>
 					</div>
+					{#each group.accounts as acct}
+						<!-- svelte-ignore a11y-click-events-have-key-events -->
+						<!-- svelte-ignore a11y-no-static-element-interactions -->
+						<div
+							on:click={() => { if (String(acct.id) !== disabledId) pick(acct.id); }}
+							class="mx-1 px-2 py-1.5 rounded-lg flex items-center justify-between gap-3
+							       {String(acct.id) === disabledId
+							           ? 'opacity-30 cursor-not-allowed'
+							           : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700'}"
+						>
+							<span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium
+							             {CATEGORY_COLORS[group.category] ?? 'bg-gray-100 text-gray-600'}">
+								{acct.name}
+							</span>
+							<span class="text-[10px] text-gray-400 dark:text-gray-500 font-mono shrink-0">{acct.currency}</span>
+						</div>
+					{/each}
 				{/each}
-			{/each}
+			{/if}
 		</div>
 
 		<!-- Click-outside overlay -->
 		<!-- svelte-ignore a11y-click-events-have-key-events -->
 		<!-- svelte-ignore a11y-no-static-element-interactions -->
-		<div class="fixed inset-0 z-20" on:click={() => (open = false)}></div>
+		<div class="fixed inset-0 z-40" on:click={() => (open = false)}></div>
 	{/if}
 </div>
