@@ -44,13 +44,11 @@
 	async function openDropdown() {
 		open = true;
 		search = '';
-		// Position using fixed coords from button rect
 		await tick();
 		const rect = buttonEl.getBoundingClientRect();
 		const spaceBelow = window.innerHeight - rect.bottom;
-		if (spaceBelow < 220 && rect.top > 220) {
-			// Open upward
-			dropdownStyle = `position:fixed;bottom:${window.innerHeight - rect.top}px;left:${rect.left}px;min-width:${rect.width}px;`;
+		if (spaceBelow < 260 && rect.top > 260) {
+			dropdownStyle = `position:fixed;bottom:${window.innerHeight - rect.top + 4}px;left:${rect.left}px;min-width:${rect.width}px;`;
 		} else {
 			dropdownStyle = `position:fixed;top:${rect.bottom + 4}px;left:${rect.left}px;min-width:${rect.width}px;`;
 		}
@@ -62,7 +60,13 @@
 		value = String(id);
 		open = false;
 	}
+
+	function onScroll() {
+		if (open) open = false;
+	}
 </script>
+
+<svelte:window on:scroll={onScroll} on:resize={onScroll} />
 
 <div class="relative w-full">
 	<input type="hidden" {name} form={formId} {value} />
@@ -110,6 +114,7 @@
 			{#if filtered.length === 0}
 				<p class="px-3 py-3 text-xs text-gray-400 dark:text-gray-500 italic">No accounts match</p>
 			{:else}
+				<div class="overflow-y-auto max-h-56">
 				{#each filtered as group}
 					<div class="px-2 pt-1.5 pb-0.5">
 						<span class="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-1">
@@ -134,6 +139,7 @@
 						</div>
 					{/each}
 				{/each}
+				</div>
 			{/if}
 		</div>
 
