@@ -38,6 +38,9 @@
 
 	// ── Edit-row state ───────────────────────────────────────────────────────
 
+	let expandedNoteId: number | null = null;
+	function toggleNote(id: number) { expandedNoteId = expandedNoteId === id ? null : id; }
+
 	let editingId: number | null = null;
 	let editDate = '';
 	let editDescription = '';
@@ -313,9 +316,6 @@
 
 								<td class="px-3 py-3 text-gray-900 dark:text-white font-medium">
 									{tx.description}
-									{#if tx.notes}
-										<div class="text-xs text-gray-400 dark:text-gray-500 font-normal mt-0.5 truncate max-w-[200px]">{tx.notes}</div>
-									{/if}
 								</td>
 
 								<td class="px-3 py-3 text-gray-600 dark:text-gray-400 text-xs">
@@ -336,8 +336,15 @@
 									{/if}
 								</td>
 
-								<td class="px-3 py-3 text-gray-400 dark:text-gray-500 text-xs truncate max-w-[140px]">
-									{tx.notes ?? ''}
+								<td class="px-3 py-3 text-xs max-w-[140px]"
+									on:click={() => tx.notes && toggleNote(tx.id)}>
+									{#if tx.notes}
+										<span class="{expandedNoteId === tx.id
+											? 'text-gray-600 dark:text-gray-300 whitespace-normal break-words cursor-pointer'
+											: 'text-gray-400 dark:text-gray-500 truncate block cursor-pointer hover:text-gray-600 dark:hover:text-gray-300'}">
+											{tx.notes}
+										</span>
+									{/if}
 								</td>
 
 								<!-- Star toggle -->
