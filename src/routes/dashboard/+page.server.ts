@@ -1,10 +1,10 @@
 import { redirect } from '@sveltejs/kit';
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { accounts, accountTypes, journalEntries, transactions } from '$lib/server/db/schema';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
 		redirect(302, '/login');
 	}
@@ -41,5 +41,29 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.groupBy(accounts.id)
 		.orderBy(accountTypes.name, accounts.name);
 
-	return { recentTransactions, accountBalances };
+	const mode = url.searchParams.get('mode') ?? 'month'  // 'month' | 'year'
+	const year = url.searchParams.get('year') ?? String(new Date().getFullYear())
+	const month = url.searchParams.get('month') ?? String(new Date().getMonth() + 1).padStart(2, '0')
+
+	const expenseGrouping = await db
+		.select({
+			category: accounts.name,
+			total: sql<number>`sum(${journalEntries.amount})`,
+		})
+		.from(journalEntries)
+		.innerJoin(transactions, eq(journalEntries.transactionId, transactions.id))
+		.innerJoin(accounts, eq(journalEntries.accountId, accounts.id))
+		.where(and(
+			eq(accounts.accountTypeId, 7),
+			sql`strftime('%Y', ${transactions.date}) = ${year}`,
+			// only filter by month if mode is 'month'
+			mode === 'month'
+				? sql`strftime('%m', ${transactions.date}) = ${month}`
+				: undefined
+			)
+			)
+		.groupBy(accounts.name)
+		.orderBy(sql`sum(${journalEntries.amount}) desc`)
+
+	return { recentTransactions, accountBalances, expenseGrouping, mode, year, month };
 };
