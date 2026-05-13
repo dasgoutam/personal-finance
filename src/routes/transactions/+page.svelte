@@ -164,12 +164,12 @@
 <form id="new-tx"  method="POST" action="?/create"></form>
 <form id="edit-tx" method="POST" action="?/update"></form>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex gap-6 items-start">
+<div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex gap-6 items-start">
 
 	<!-- ── Sidebar filter ───────────────────────────────────────────────── -->
-	<aside class="w-48 flex-shrink-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden sticky top-6">
+	<aside class="w-80 flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden sticky top-6">
 		<div class="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
-			<p class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Filter by account</p>
+			<p class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Filter</p>
 		</div>
 		<nav class="py-1.5 text-xs">
 			<a href={filterUrl(null)}
@@ -227,7 +227,7 @@
 		</button>
 	</div>
 
-	<div class="relative mb-4">
+	<div class="relative mb-4 max-w-xs">
 		<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none"
 			fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
 			<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
