@@ -61,6 +61,22 @@
 		return `?${params.toString()}`;
 	}
 
+	import { goto } from '$app/navigation';
+	let searchValue = data.search;
+	let searchTimer: ReturnType<typeof setTimeout>;
+
+	function onSearch(e: Event) {
+		const q = (e.target as HTMLInputElement).value;
+		clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => {
+			const params = new URLSearchParams($page.url.searchParams);
+			if (q.trim()) params.set('search', q.trim());
+			else params.delete('search');
+			params.set('page', '1');
+			goto(`?${params.toString()}`, { keepFocus: true });
+		}, 300);
+	}
+
 	// ── Add-row state ────────────────────────────────────────────────────────
 
 	let newFromId = '';
@@ -197,7 +213,7 @@
 	<!-- ── Main content ──────────────────────────────────────────────────── -->
 	<div class="flex-1 min-w-0">
 
-	<div class="flex items-center justify-between mb-6">
+	<div class="flex items-center justify-between mb-4">
 		<h1 class="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
 		<button type="button" on:click={() => showStarredOnly = !showStarredOnly}
 			class="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors
@@ -209,6 +225,20 @@
 			</svg>
 			Starred
 		</button>
+	</div>
+
+	<div class="relative mb-4">
+		<svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500 pointer-events-none"
+			fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+			<path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+		</svg>
+		<input
+			type="search"
+			placeholder="Search description or notes…"
+			value={searchValue}
+			on:input={onSearch}
+			class="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+		/>
 	</div>
 
 	{#if form?.error}

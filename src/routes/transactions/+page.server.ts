@@ -1,5 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { accounts, accountTypes, journalEntries, transactions } from '$lib/server/db/schema';
 import { createTransaction } from '$lib/server/finance';
@@ -10,35 +10,37 @@ const PAGE_SIZE = 25;
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) redirect(302, '/login');
 
-	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
+	const page       = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
 	const accountIdParam = url.searchParams.get('accountId');
 	const filterAccountId = accountIdParam ? parseInt(accountIdParam, 10) : null;
+	const search = url.searchParams.get('search')?.trim() ?? '';
 
-	// Count matching transactions
-	const countQuery = db
+	// Build a WHERE clause combining both filters
+	const where = and(
+		filterAccountId ? eq(journalEntries.accountId, filterAccountId) : undefined,
+		search ? or(
+			like(transactions.description, `%${search}%`),
+			like(transactions.notes, `%${search}%`)
+		) : undefined
+	);
+
+	const [{ total }] = await db
 		.select({ total: sql<number>`count(distinct ${transactions.id})` })
 		.from(transactions)
-		.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id));
-
-	const [{ total }] = filterAccountId
-		? await countQuery.where(eq(journalEntries.accountId, filterAccountId))
-		: await countQuery;
+		.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id))
+		.where(where);
 
 	const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-	const safePage = Math.min(page, totalPages);
+	const safePage   = Math.min(page, totalPages);
 
-	// Fetch page of transaction IDs
-	const idsQuery = db
+	const pageIds = (await db
 		.select({ id: transactions.id })
 		.from(transactions)
 		.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id))
+		.where(where)
 		.orderBy(desc(transactions.date), desc(transactions.id))
 		.limit(PAGE_SIZE)
-		.offset((safePage - 1) * PAGE_SIZE);
-
-	const pageIds = (filterAccountId
-		? await idsQuery.where(eq(journalEntries.accountId, filterAccountId))
-		: await idsQuery
+		.offset((safePage - 1) * PAGE_SIZE)
 	).map(r => r.id);
 
 	const rows = pageIds.length === 0 ? [] : await db
@@ -113,7 +115,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		page: safePage,
 		totalPages,
 		total,
-		filterAccountId
+		filterAccountId,
+		search
 	};
 };
 
