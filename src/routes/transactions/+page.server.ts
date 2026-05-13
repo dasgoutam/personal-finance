@@ -1,14 +1,47 @@
 import { fail, redirect } from '@sveltejs/kit';
-import { desc, eq, sql } from 'drizzle-orm';
+import { desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { accounts, accountTypes, journalEntries, transactions } from '$lib/server/db/schema';
 import { createTransaction } from '$lib/server/finance';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ locals }) => {
+const PAGE_SIZE = 25;
+
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) redirect(302, '/login');
 
-	const rows = await db
+	const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
+	const accountIdParam = url.searchParams.get('accountId');
+	const filterAccountId = accountIdParam ? parseInt(accountIdParam, 10) : null;
+
+	// Count matching transactions
+	const countQuery = db
+		.select({ total: sql<number>`count(distinct ${transactions.id})` })
+		.from(transactions)
+		.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id));
+
+	const [{ total }] = filterAccountId
+		? await countQuery.where(eq(journalEntries.accountId, filterAccountId))
+		: await countQuery;
+
+	const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+	const safePage = Math.min(page, totalPages);
+
+	// Fetch page of transaction IDs
+	const idsQuery = db
+		.select({ id: transactions.id })
+		.from(transactions)
+		.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id))
+		.orderBy(desc(transactions.date), desc(transactions.id))
+		.limit(PAGE_SIZE)
+		.offset((safePage - 1) * PAGE_SIZE);
+
+	const pageIds = (filterAccountId
+		? await idsQuery.where(eq(journalEntries.accountId, filterAccountId))
+		: await idsQuery
+	).map(r => r.id);
+
+	const rows = pageIds.length === 0 ? [] : await db
 		.select({
 			txId: transactions.id,
 			txDate: transactions.date,
@@ -24,6 +57,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.from(transactions)
 		.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id))
 		.leftJoin(accounts, eq(accounts.id, journalEntries.accountId))
+		.where(inArray(transactions.id, pageIds))
 		.orderBy(desc(transactions.date), desc(transactions.id));
 
 	const txMap = new Map<
@@ -73,7 +107,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.where(eq(accounts.isActive, true))
 		.orderBy(accountTypes.name, accounts.name);
 
-	return { txList: Array.from(txMap.values()), accounts: allAccounts };
+	return {
+		txList: Array.from(txMap.values()),
+		accounts: allAccounts,
+		page: safePage,
+		totalPages,
+		total,
+		filterAccountId
+	};
 };
 
 // ---------------------------------------------------------------------------
@@ -144,7 +185,7 @@ export const actions: Actions = {
 		redirect(302, '/transactions');
 	},
 
-	toggleStar: async ({ request, locals }) => {
+	toggleStar: async ({ request, locals, url }) => {
 		if (!locals.user) redirect(302, '/login');
 
 		const data = await request.formData();
@@ -156,7 +197,10 @@ export const actions: Actions = {
 		if (!tx) return fail(404, { error: 'Transaction not found.' });
 
 		db.update(transactions).set({ isStarred: !tx.isStarred }).where(eq(transactions.id, txId)).run();
-		redirect(302, '/transactions');
+		const redirectParams = new URLSearchParams();
+		if (url.searchParams.has('page')) redirectParams.set('page', url.searchParams.get('page')!);
+		if (url.searchParams.has('accountId')) redirectParams.set('accountId', url.searchParams.get('accountId')!);
+		redirect(302, `/transactions?${redirectParams.toString()}`);
 	},
 
 	update: async ({ request, locals }) => {

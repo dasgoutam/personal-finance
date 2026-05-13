@@ -10,6 +10,8 @@
 	const CURRENCIES = ['EUR', 'INR', 'USD', 'GBP', 'CHF'];
 	const SYMBOLS: Record<string, string> = { EUR: '€', INR: '₹', USD: '$', GBP: '£', CHF: 'Fr' };
 
+	import { page } from '$app/stores';
+
 	let showStarredOnly = false;
 	$: txList = showStarredOnly ? data.txList.filter((tx) => tx.isStarred) : data.txList;
 
@@ -21,6 +23,43 @@
 			return { label: typeName, category: accts[0]?.typeCategory ?? 'asset', accounts: accts };
 		})
 		.filter((g) => g.accounts.length > 0);
+
+	// Sidebar: group by category → type → accounts
+	const CATEGORY_ORDER = ['asset', 'liability', 'income', 'expense', 'equity'];
+	const CATEGORY_LABEL: Record<string, string> = {
+		asset: 'Assets', liability: 'Liabilities', income: 'Income', expense: 'Expenses', equity: 'Equity'
+	};
+
+	$: sidebarCategories = CATEGORY_ORDER
+		.map(cat => ({
+			category: cat,
+			label: CATEGORY_LABEL[cat],
+			types: [...new Set(data.accounts.filter(a => a.typeCategory === cat).map(a => a.typeName))]
+				.sort()
+				.map(typeName => ({
+					typeName,
+					accounts: data.accounts.filter(a => a.typeName === typeName)
+				}))
+				.filter(t => t.accounts.length > 0)
+		}))
+		.filter(c => c.types.length > 0);
+
+	// Track which type sections are expanded — initialised from data directly (sidebarCategories is reactive, not available yet)
+	let expandedTypes = new Set<string>(data.accounts.map(a => a.typeName));
+
+	function toggleType(typeName: string) {
+		if (expandedTypes.has(typeName)) expandedTypes.delete(typeName);
+		else expandedTypes.add(typeName);
+		expandedTypes = expandedTypes;
+	}
+
+	function filterUrl(accountId: number | null) {
+		const params = new URLSearchParams($page.url.searchParams);
+		if (accountId === null) params.delete('accountId');
+		else params.set('accountId', String(accountId));
+		params.set('page', '1');
+		return `?${params.toString()}`;
+	}
 
 	// ── Add-row state ────────────────────────────────────────────────────────
 
@@ -109,7 +148,54 @@
 <form id="new-tx"  method="POST" action="?/create"></form>
 <form id="edit-tx" method="POST" action="?/update"></form>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex gap-6 items-start">
+
+	<!-- ── Sidebar filter ───────────────────────────────────────────────── -->
+	<aside class="w-48 flex-shrink-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden sticky top-6">
+		<div class="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
+			<p class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Filter by account</p>
+		</div>
+		<nav class="py-1.5 text-xs">
+			<a href={filterUrl(null)}
+				class="flex items-center px-3 py-1.5 transition-colors
+					{data.filterAccountId === null
+						? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
+						: 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}">
+				All transactions
+			</a>
+
+			{#each sidebarCategories as cat}
+				<div class="mt-1.5">
+					<p class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">{cat.label}</p>
+					{#each cat.types as typeGroup}
+						<!-- Type header — clickable to expand/collapse -->
+						<button type="button" on:click={() => toggleType(typeGroup.typeName)}
+							class="w-full flex items-center justify-between px-3 py-1 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+							<span class="font-medium">{typeGroup.typeName}</span>
+							<svg class="w-3 h-3 transition-transform {expandedTypes.has(typeGroup.typeName) ? 'rotate-90' : ''}"
+								fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+								<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+							</svg>
+						</button>
+						{#if expandedTypes.has(typeGroup.typeName)}
+							{#each typeGroup.accounts as acct}
+								<a href={filterUrl(acct.id)}
+									class="flex items-center pl-5 pr-3 py-1 transition-colors
+										{data.filterAccountId === acct.id
+											? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
+											: 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}">
+									{acct.name}
+								</a>
+							{/each}
+						{/if}
+					{/each}
+				</div>
+			{/each}
+		</nav>
+	</aside>
+
+	<!-- ── Main content ──────────────────────────────────────────────────── -->
+	<div class="flex-1 min-w-0">
 
 	<div class="flex items-center justify-between mb-6">
 		<h1 class="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h1>
@@ -381,7 +467,33 @@
 		</div>
 	</div>
 
-	<p class="mt-3 text-xs text-gray-400 dark:text-gray-500">
-		{showStarredOnly ? `${txList.length} starred` : `${data.txList.length} transaction${data.txList.length === 1 ? '' : 's'} total, ${data.txList.filter((t) => t.isStarred).length} starred`}
-	</p>
+	<div class="mt-3 flex items-center justify-between">
+		<p class="text-xs text-gray-400 dark:text-gray-500">
+			{showStarredOnly
+				? `${txList.length} starred`
+				: `${data.total} transaction${data.total === 1 ? '' : 's'} · page ${data.page} of ${data.totalPages}`}
+		</p>
+		{#if !showStarredOnly && data.totalPages > 1}
+			<div class="flex items-center gap-1">
+				<a
+					href={filterUrl(data.filterAccountId).replace('page=1', `page=${data.page - 1}`)}
+					class="px-2.5 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 transition-colors
+						{data.page <= 1
+							? 'pointer-events-none text-gray-300 dark:text-gray-600'
+							: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
+					aria-disabled={data.page <= 1}
+				>← Prev</a>
+				<a
+					href={filterUrl(data.filterAccountId).replace('page=1', `page=${data.page + 1}`)}
+					class="px-2.5 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 transition-colors
+						{data.page >= data.totalPages
+							? 'pointer-events-none text-gray-300 dark:text-gray-600'
+							: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
+					aria-disabled={data.page >= data.totalPages}
+				>Next →</a>
+			</div>
+		{/if}
+	</div>
+
+	</div> <!-- end main content -->
 </div>
