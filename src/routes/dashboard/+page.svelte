@@ -52,6 +52,17 @@
 		goto(`?${params.toString()}`)
 	}
 
+	function fmt(amount: number, currency: string) {
+		return new Intl.NumberFormat('de-DE', { style: 'currency', currency, minimumFractionDigits: 2 }).format(amount / 100)
+	}
+
+	$: bankAccounts = data.accountBalances.filter(a => a.typeName === 'Bank')
+	$: netWorth = data.accountBalances.reduce((sum, a) => {
+		if (a.typeCategory === 'asset')     return sum + a.balance
+		if (a.typeCategory === 'liability') return sum - a.balance
+		return sum
+	}, 0)
+
 	$: grandTotal = data.expenseGrouping.reduce((sum, e) => sum + e.total, 0)
 	$: rows = data.expenseGrouping.map((e, i) => ({
 		category: e.category,
@@ -65,7 +76,36 @@
 	<title>Dashboard — Personal Finance</title>
 </svelte:head>
 
-<div class="p-4 max-w-2xl">
+<div class="p-4 max-w-2xl space-y-4">
+
+	<!-- ── Top row: Net Worth + Bank Accounts ───────────────────────────── -->
+	<div class="grid grid-cols-2 gap-4">
+
+		<!-- Net Worth -->
+		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm px-4 py-3">
+			<p class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1">Net Worth</p>
+			<p class="text-2xl font-bold {netWorth >= 0 ? 'text-gray-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'}">
+				{fmt(netWorth, 'EUR')}
+			</p>
+		</div>
+
+		<!-- Bank Accounts -->
+		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm px-4 py-3">
+			<p class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2">Checking Accounts</p>
+			<div class="space-y-1.5">
+				{#each bankAccounts as acct}
+					<div class="flex justify-between items-baseline gap-2">
+						<span class="text-xs text-gray-600 dark:text-gray-400 truncate">{acct.name}</span>
+						<span class="text-xs font-semibold tabular-nums text-gray-900 dark:text-white flex-shrink-0
+							{acct.balance < 0 ? 'text-rose-600 dark:text-rose-400' : ''}">
+							{fmt(acct.balance, acct.currency)}
+						</span>
+					</div>
+				{/each}
+			</div>
+		</div>
+
+	</div>
 
 	<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
 
