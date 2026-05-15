@@ -29,6 +29,13 @@
 	const CATEGORY_LABEL: Record<string, string> = {
 		asset: 'Assets', liability: 'Liabilities', income: 'Income', expense: 'Expenses', equity: 'Equity'
 	};
+	const CATEGORY_COLORS: Record<string, { section: string; heading: string; link: string; active: string }> = {
+		asset:     { section: 'bg-sky-50/60 dark:bg-sky-900/10',         heading: 'text-blue-600 dark:text-sky-400',        link: 'text-blue-700 dark:text-sky-300',        active: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300' },
+		liability: { section: 'bg-rose-50/60 dark:bg-rose-900/10',       heading: 'text-rose-600 dark:text-rose-400',       link: 'text-rose-700 dark:text-rose-300',       active: 'bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300' },
+		income:    { section: 'bg-emerald-50/60 dark:bg-emerald-900/10', heading: 'text-emerald-600 dark:text-emerald-400', link: 'text-emerald-700 dark:text-emerald-300', active: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300' },
+		expense:   { section: 'bg-amber-50/60 dark:bg-amber-900/10',     heading: 'text-amber-600 dark:text-amber-400',     link: 'text-amber-700 dark:text-amber-300',     active: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300' },
+		equity:    { section: 'bg-violet-50/60 dark:bg-violet-900/10',   heading: 'text-violet-600 dark:text-violet-400',   link: 'text-violet-700 dark:text-violet-300',   active: 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300' },
+	};
 
 	$: sidebarCategories = CATEGORY_ORDER
 		.map(cat => ({
@@ -181,25 +188,17 @@
 			</a>
 
 			{#each sidebarCategories as cat}
-				<div class="mt-1.5">
-					<p class="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">{cat.label}</p>
+				{@const clr = CATEGORY_COLORS[cat.category]}
+				<div class="mt-1">
+					<p class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider {clr.heading} {clr.section}">{cat.label}</p>
 					{#each cat.types as typeGroup}
-						<!-- Type header — clickable to expand/collapse -->
-						<button type="button" on:click={() => toggleType(typeGroup.typeName)}
-							class="w-full flex items-center justify-between px-3 py-1 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-							<span class="font-medium">{typeGroup.typeName}</span>
-							<svg class="w-3 h-3 transition-transform {expandedTypes.has(typeGroup.typeName) ? 'rotate-90' : ''}"
-								fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-								<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
-							</svg>
-						</button>
 						{#if expandedTypes.has(typeGroup.typeName)}
 							{#each typeGroup.accounts as acct}
 								<a href={filterUrl(acct.id)}
 									class="flex items-center pl-5 pr-3 py-1 transition-colors
 										{data.filterAccountId === acct.id
-											? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
-											: 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}">
+											? clr.active + ' font-medium'
+											: clr.link + ' hover:bg-gray-50 dark:hover:bg-gray-700'}">
 									{acct.name}
 								</a>
 							{/each}
