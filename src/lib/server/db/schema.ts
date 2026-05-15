@@ -89,6 +89,9 @@ export const transactions = sqliteTable('transactions', {
 		.default(sql`(unixepoch())`)
 });
 
+export const COMMODITY_TYPES = ['etf', 'stock', 'crypto', 'other'] as const;
+export type CommodityType = (typeof COMMODITY_TYPES)[number];
+
 /**
  * Tradeable instruments (stocks, ETFs, mutual funds, crypto).
  */
@@ -96,7 +99,8 @@ export const commodities = sqliteTable('commodities', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	symbol: text('symbol').notNull().unique(),
 	name: text('name').notNull(),
-	currency: text('currency').notNull()
+	currency: text('currency').notNull(),
+	type: text('type', { enum: COMMODITY_TYPES }).notNull().default('other')
 });
 
 /**

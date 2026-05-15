@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { accounts, accountTypes, commodities, journalEntries, transactions } from '$lib/server/db/schema';
+import { accounts, accountTypes, commodities, journalEntries, transactions, COMMODITY_TYPES } from '$lib/server/db/schema';
 import { parseLedger } from '$lib/server/ledger-parser';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -179,6 +179,7 @@ export const actions: Actions = {
 		const symbol = data.get('symbol');
 		const name = data.get('name');
 		const currency = data.get('currency');
+		const type = data.get('type');
 
 		if (typeof symbol !== 'string' || !symbol.trim())
 			return fail(400, { error: 'Symbol is required.', tab: 'commodities' });
@@ -186,12 +187,15 @@ export const actions: Actions = {
 			return fail(400, { error: 'Name is required.', tab: 'commodities' });
 		if (typeof currency !== 'string' || !currency.trim())
 			return fail(400, { error: 'Currency is required.', tab: 'commodities' });
+		if (typeof type !== 'string' || !(COMMODITY_TYPES as readonly string[]).includes(type))
+			return fail(400, { error: 'Invalid type.', tab: 'commodities' });
 
 		try {
 			db.insert(commodities).values({
 				symbol: symbol.trim().toUpperCase(),
 				name: name.trim(),
-				currency: currency.trim().toUpperCase()
+				currency: currency.trim().toUpperCase(),
+				type: type as typeof COMMODITY_TYPES[number]
 			}).run();
 		} catch (e) {
 			return fail(500, { error: (e as Error).message, tab: 'commodities' });

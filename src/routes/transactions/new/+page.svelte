@@ -13,6 +13,14 @@
 		return `${y}-${m}-${day}`;
 	}
 
+	const COMMODITY_TYPE_LABELS: Record<string, string> = { etf: 'ETF', stock: 'Stock', crypto: 'Crypto', other: 'Other' };
+	const COMMODITY_TYPE_COLORS: Record<string, string> = {
+		etf: 'bg-violet-50 text-violet-700',
+		stock: 'bg-sky-50 text-sky-700',
+		crypto: 'bg-amber-50 text-amber-700',
+		other: 'bg-gray-100 text-gray-600'
+	};
+
 	// Group accounts by type name for <optgroup>
 	$: grouped = [...new Set(data.accounts.map((a) => a.typeName))]
 		.sort()
@@ -34,6 +42,35 @@
 		GBP: '£'
 	};
 	$: symbol = CURRENCY_SYMBOLS[currency] ?? currency;
+
+	// Commodity section
+	let selectedCommodityId = '';
+	let quantity = '';
+	let livePrice: number | null = null;
+	let liveCurrency: string | null = null;
+	let priceLoading = false;
+
+	$: selectedCommodity = data.commodities.find((c) => String(c.id) === selectedCommodityId);
+
+	async function onCommodityChange() {
+		livePrice = null;
+		if (!selectedCommodity) return;
+		priceLoading = true;
+		const res = await fetch(`/api/ticker-price?symbol=${encodeURIComponent(selectedCommodity.symbol)}`);
+		if (res.ok) {
+			const d = await res.json();
+			livePrice = d.price ?? null;
+			liveCurrency = d.currency ?? null;
+		}
+		priceLoading = false;
+	}
+
+	// When quantity changes and we have a live price, auto-fill amount
+	let amountValue = '';
+	$: if (livePrice !== null && quantity) {
+		const q = parseFloat(quantity.replace(',', '.'));
+		if (!isNaN(q) && q > 0) amountValue = (livePrice * q).toFixed(2);
+	}
 </script>
 
 <svelte:head>
@@ -152,6 +189,63 @@
 			{/if}
 		{/if}
 
+		<!-- Commodity (optional) -->
+		{#if data.commodities.length > 0}
+			<div class="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3">
+				<p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Investment (optional)</p>
+				<div class="flex flex-wrap gap-3 items-end">
+					<!-- Commodity picker -->
+					<div class="flex-1 min-w-40">
+						<label for="commodityId" class="block text-xs text-gray-500 mb-1">Commodity</label>
+						<select
+							id="commodityId"
+							name="commodityId"
+							bind:value={selectedCommodityId}
+							on:change={onCommodityChange}
+							class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+						>
+							<option value="">None</option>
+							{#each data.commodities as c}
+								<option value={c.id}>{c.symbol} — {c.name}</option>
+							{/each}
+						</select>
+					</div>
+
+					<!-- Quantity -->
+					{#if selectedCommodity}
+						<div class="w-36">
+							<label for="quantity" class="block text-xs text-gray-500 mb-1">
+								Quantity
+								{#if priceLoading}<span class="text-gray-400">fetching price…</span>{/if}
+								{#if !priceLoading && livePrice !== null}
+									<span class="text-green-600 font-medium">
+										@ {livePrice.toLocaleString('de-DE', { style: 'currency', currency: liveCurrency ?? selectedCommodity.currency, minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+									</span>
+								{/if}
+							</label>
+							<input
+								id="quantity"
+								name="quantity"
+								type="number"
+								inputmode="decimal"
+								min="0.001"
+								step="0.001"
+								placeholder="1.000"
+								bind:value={quantity}
+								class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+							/>
+						</div>
+						<div class="flex items-center gap-1.5 pb-1.5">
+							<span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium {COMMODITY_TYPE_COLORS[selectedCommodity.type]}">
+								{COMMODITY_TYPE_LABELS[selectedCommodity.type]}
+							</span>
+							<span class="text-xs text-gray-400 font-mono">{selectedCommodity.currency}</span>
+						</div>
+					{/if}
+				</div>
+			</div>
+		{/if}
+
 		<!-- Amount + currency -->
 		<div>
 			<label for="amount" class="block text-sm font-medium text-gray-700 mb-1.5">Amount</label>
@@ -169,7 +263,7 @@
 						min="0.01"
 						step="0.01"
 						placeholder="0.00"
-						value={form?.amount ?? ''}
+						bind:value={amountValue}
 						class="w-full rounded-lg border border-gray-300 pl-8 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 					/>
 				</div>

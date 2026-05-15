@@ -22,7 +22,8 @@
     "drizzle-orm": "^0.30.10",
     "layerchart": "^1.0.13",
     "lucia": "^3.2.0",
-    "lucide-svelte": "^0.577.0"
+    "lucide-svelte": "^0.577.0",
+    "yahoo-finance2": "^3.14.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-node": "^5.0.1",

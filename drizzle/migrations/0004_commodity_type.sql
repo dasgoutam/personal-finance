@@ -1,0 +1,1 @@
+ALTER TABLE commodities ADD COLUMN type TEXT NOT NULL DEFAULT 'other';
