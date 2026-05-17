@@ -64,11 +64,11 @@ function parseEuropeanDecimal(s: string): number {
  *   Assets:Investments:Stocks:*  → Stocks
  *   Assets:Investments:ETF:*     → ETF
  *   Assets:Investments:Crypto:*  → Crypto
- *   Assets:Investments:*         → Investments
+ *   Assets:Investments:*         → Bank (fallback)
  *   Assets:Equity:Stocks:*       → Stocks   (legacy paisa path)
  *   Assets:Equity:ETF:*          → ETF      (legacy paisa path)
  *   Assets:Equity:Crypto:*       → Crypto   (legacy paisa path)
- *   Assets:Equity:*              → Investments (legacy paisa path)
+ *   Assets:Equity:*              → Bank     (legacy paisa path fallback)
  *   Assets:*                     → Bank (fallback — bank-like asset)
  *   Income:*                     → Income
  *   Expenses:*                   → Expense
@@ -84,7 +84,6 @@ function inferAccountTypeName(path: string): string {
 				if (third === 'Stocks') return 'Stocks';
 				if (third === 'ETF') return 'ETF';
 				if (third === 'Crypto') return 'Crypto';
-				return 'Investments';
 			}
 			return 'Bank';
 		case 'Income':
