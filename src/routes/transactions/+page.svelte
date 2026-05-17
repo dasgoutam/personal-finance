@@ -89,6 +89,9 @@
 	let newFromId = '';
 	let newToId   = '';
 	let newCurrency = 'EUR';
+	let newQuantity = '';
+	let newAmountValue = '';
+	let newUnitPrice = '';
 
 	// Auto-set currency from "from" account, but allow manual override
 	$: {
@@ -97,6 +100,17 @@
 	}
 
 	$: newSymbol = SYMBOLS[newCurrency] ?? newCurrency;
+
+	$: newToAccount = data.accounts.find((a) => String(a.id) === newToId);
+	$: newLinkedCommodity = newToAccount?.commoditySymbol ? newToAccount : null;
+
+	$: if (!newLinkedCommodity) { newQuantity = ''; newAmountValue = ''; }
+
+	$: if (newUnitPrice && newQuantity) {
+		const q = parseFloat(newQuantity.replace(',', '.'));
+		const p = parseFloat(newUnitPrice.replace(',', '.'));
+		if (!isNaN(q) && !isNaN(p) && q > 0 && p > 0) newAmountValue = (q * p).toFixed(2);
+	}
 
 	// ── Edit-row state ───────────────────────────────────────────────────────
 
@@ -301,22 +315,39 @@
 						/>
 					</td>
 
-					<!-- Amount + currency select -->
+					<!-- Amount + currency select (+ quantity if investment account) -->
 					<td class="px-2 py-2">
-						<div class="flex items-center gap-1">
-							<div class="relative flex-1">
-								<span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-xs pointer-events-none">{newSymbol}</span>
-								<input form="new-tx" name="amount" type="number" inputmode="decimal"
-									required min="0.01" step="0.01" placeholder="0.00"
-									class="w-full rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 dark:text-white pl-5 pr-1 py-1.5 text-xs text-right focus:outline-none focus:ring-2 focus:ring-blue-500" />
+						{#if newLinkedCommodity}
+							<div class="flex items-center gap-1">
+								<input form="new-tx" name="quantity" type="number" inputmode="decimal"
+									min="0.001" step="0.001" placeholder="units"
+									bind:value={newQuantity}
+									class="w-20 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 dark:text-white px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+								<span class="text-xs text-gray-400">×</span>
+								<input type="number" inputmode="decimal"
+									min="0.01" step="0.01" placeholder="price"
+									bind:value={newUnitPrice}
+									class="w-20 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 dark:text-white px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+								<input form="new-tx" name="amount" type="hidden" value={newAmountValue} />
+								<input form="new-tx" type="hidden" name="currency" value={newCurrency} />
+								<span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{newAmountValue ? `${newSymbol}${newAmountValue}` : '—'}</span>
 							</div>
-							<select form="new-tx" name="currency" bind:value={newCurrency}
-								class="rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 dark:text-white px-1.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
-								{#each CURRENCIES as c}
-									<option value={c}>{c}</option>
-								{/each}
-							</select>
-						</div>
+						{:else}
+							<div class="flex items-center gap-1">
+								<div class="relative flex-1">
+									<span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 text-xs pointer-events-none">{newSymbol}</span>
+									<input form="new-tx" name="amount" type="number" inputmode="decimal"
+										required min="0.01" step="0.01" placeholder="0.00"
+										class="w-full rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 dark:text-white pl-5 pr-1 py-1.5 text-xs text-right focus:outline-none focus:ring-2 focus:ring-blue-500" />
+								</div>
+								<select form="new-tx" name="currency" bind:value={newCurrency}
+									class="rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 dark:text-white px-1.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+									{#each CURRENCIES as c}
+										<option value={c}>{c}</option>
+									{/each}
+								</select>
+							</div>
+						{/if}
 					</td>
 
 					<td class="px-2 py-2">

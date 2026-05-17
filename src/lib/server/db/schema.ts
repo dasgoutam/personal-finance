@@ -1,6 +1,6 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
-import type { AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
+import type { AnySQLiteColumn } from 'drizzle-orm/sqlite-core'; // needed for accountTypes self-reference
 
 // ---------------------------------------------------------------------------
 // Lucia auth tables
@@ -53,6 +53,20 @@ export const accountTypes = sqliteTable('account_types', {
 // Finance tables
 // ---------------------------------------------------------------------------
 
+export const COMMODITY_TYPES = ['etf', 'stock', 'crypto', 'other'] as const;
+export type CommodityType = (typeof COMMODITY_TYPES)[number];
+
+/**
+ * Tradeable instruments (stocks, ETFs, mutual funds, crypto).
+ */
+export const commodities = sqliteTable('commodities', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	symbol: text('symbol').notNull().unique(),
+	name: text('name').notNull(),
+	currency: text('currency').notNull(),
+	type: text('type', { enum: COMMODITY_TYPES }).notNull().default('other')
+});
+
 /**
  * Chart of accounts — flat structure.
  * Hierarchy/grouping is handled by account_types, not by a parent_id on accounts.
@@ -65,6 +79,8 @@ export const accounts = sqliteTable('accounts', {
 		.references(() => accountTypes.id),
 	/** ISO 4217 currency code, e.g. "EUR", "INR" */
 	currency: text('currency').notNull().default('EUR'),
+	/** For investment accounts: the single commodity this account tracks */
+	commodityId: integer('commodity_id').references(() => commodities.id),
 	description: text('description'),
 	isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
 	createdAt: integer('created_at', { mode: 'timestamp' })
@@ -87,20 +103,6 @@ export const transactions = sqliteTable('transactions', {
 	updatedAt: integer('updated_at', { mode: 'timestamp' })
 		.notNull()
 		.default(sql`(unixepoch())`)
-});
-
-export const COMMODITY_TYPES = ['etf', 'stock', 'crypto', 'other'] as const;
-export type CommodityType = (typeof COMMODITY_TYPES)[number];
-
-/**
- * Tradeable instruments (stocks, ETFs, mutual funds, crypto).
- */
-export const commodities = sqliteTable('commodities', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	symbol: text('symbol').notNull().unique(),
-	name: text('name').notNull(),
-	currency: text('currency').notNull(),
-	type: text('type', { enum: COMMODITY_TYPES }).notNull().default('other')
 });
 
 /**

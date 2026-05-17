@@ -57,6 +57,12 @@
 	}
 
 	$: bankAccounts = data.accountBalances.filter(a => a.typeName === 'Bank')
+	$: investmentAccounts = data.accountBalances.filter(a => a.commoditySymbol != null)
+
+	function fmtUnits(units: number, symbol: string) {
+		const qty = units / 1000;
+		return `${qty.toLocaleString('de-DE', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} ${symbol}`;
+	}
 	$: netWorth = data.accountBalances.reduce((sum, a) => {
 		if (a.typeCategory === 'asset')     return sum + a.balance
 		if (a.typeCategory === 'liability') return sum - a.balance
@@ -106,6 +112,23 @@
 		</div>
 
 	</div>
+
+	<!-- ── Investment Holdings ───────────────────────────────────────────── -->
+	{#if investmentAccounts.length > 0}
+		<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm px-4 py-3">
+			<p class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-2">Holdings</p>
+			<div class="space-y-1.5">
+				{#each investmentAccounts as acct}
+					<div class="flex justify-between items-baseline gap-2">
+						<span class="text-xs text-gray-600 dark:text-gray-400 truncate">{acct.name}</span>
+						<span class="text-xs font-semibold tabular-nums text-gray-900 dark:text-white flex-shrink-0">
+							{fmtUnits(acct.units, acct.commoditySymbol ?? '')}
+						</span>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	<div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
 

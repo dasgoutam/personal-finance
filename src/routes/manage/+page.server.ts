@@ -21,11 +21,14 @@ export const load: PageServerLoad = async ({ locals }) => {
 			accountTypeName: accountTypes.name,
 			accountTypeCategory: accountTypes.category,
 			currency: accounts.currency,
+			commodityId: accounts.commodityId,
+			commoditySymbol: commodities.symbol,
 			description: accounts.description,
 			isActive: accounts.isActive
 		})
 		.from(accounts)
 		.innerJoin(accountTypes, eq(accountTypes.id, accounts.accountTypeId))
+		.leftJoin(commodities, eq(commodities.id, accounts.commodityId))
 		.orderBy(accountTypes.name, accounts.name);
 
 	const allCommodities = await db
@@ -96,6 +99,7 @@ export const actions: Actions = {
 		const accountTypeIdRaw = data.get('accountTypeId');
 		const currency = data.get('currency');
 		const description = data.get('description');
+		const commodityIdRaw = data.get('commodityId');
 
 		if (typeof name !== 'string' || !name.trim())
 			return fail(400, { error: 'Name is required.', tab: 'accounts' });
@@ -105,12 +109,17 @@ export const actions: Actions = {
 			return fail(400, { error: 'Currency is required.', tab: 'accounts' });
 
 		const accountTypeId = parseInt(accountTypeIdRaw, 10);
+		const commodityId =
+			typeof commodityIdRaw === 'string' && commodityIdRaw
+				? parseInt(commodityIdRaw, 10)
+				: null;
 
 		try {
 			db.insert(accounts).values({
 				name: name.trim(),
 				accountTypeId,
 				currency: currency.trim().toUpperCase(),
+				commodityId,
 				description: typeof description === 'string' && description.trim() ? description.trim() : null
 			}).run();
 		} catch (e) {

@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { accounts, accountTypes, journalEntries, transactions } from '$lib/server/db/schema';
+import { accounts, accountTypes, commodities, journalEntries, transactions } from '$lib/server/db/schema';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
@@ -32,10 +32,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			currency: accounts.currency,
 			typeName: accountTypes.name,
 			typeCategory: accountTypes.category,
-			balance: sql<number>`coalesce(sum(${journalEntries.amount}), 0)`
+			commoditySymbol: commodities.symbol,
+			balance: sql<number>`coalesce(sum(${journalEntries.amount}), 0)`,
+			units: sql<number>`coalesce(sum(${journalEntries.quantity}), 0)`
 		})
 		.from(accounts)
 		.innerJoin(accountTypes, eq(accountTypes.id, accounts.accountTypeId))
+		.leftJoin(commodities, eq(commodities.id, accounts.commodityId))
 		.leftJoin(journalEntries, eq(journalEntries.accountId, accounts.id))
 		.where(eq(accounts.isActive, true))
 		.groupBy(accounts.id)

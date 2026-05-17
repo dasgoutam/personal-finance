@@ -64,6 +64,10 @@
 	let selectedTypeId = '';
 	let selectedType: typeof data.accountTypes[number] | undefined;
 	$: selectedType = data.accountTypes.find((t) => String(t.id) === selectedTypeId);
+	$: isInvestmentType = selectedType ? ['ETF', 'Stocks', 'Crypto'].includes(selectedType.name) : false;
+
+	let selectedAccountCommodityId = '';
+	$: if (!isInvestmentType) selectedAccountCommodityId = '';
 
 	function selectType(id: number) {
 		selectedTypeId = String(id);
@@ -337,6 +341,19 @@
 						{/each}
 					</select>
 				</div>
+				{#if isInvestmentType}
+					<div class="w-40">
+						<label for="acct-commodity" class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Commodity</label>
+						<input type="hidden" name="commodityId" value={selectedAccountCommodityId} />
+						<select id="acct-commodity" bind:value={selectedAccountCommodityId}
+							class="w-full rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 dark:text-white px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+							<option value="">None</option>
+							{#each data.commodities as c}
+								<option value={c.id}>{c.symbol} — {c.name}</option>
+							{/each}
+						</select>
+					</div>
+				{/if}
 				<div>
 					<button type="submit"
 						class="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors">
@@ -396,7 +413,12 @@
 													<div class="text-xs text-gray-400 dark:text-gray-500 font-normal mt-0.5">{acct.description}</div>
 												{/if}
 											</td>
-											<td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs font-mono w-20">{acct.currency}</td>
+											<td class="px-4 py-2.5 text-gray-500 dark:text-gray-400 text-xs font-mono w-20">
+												{acct.currency}
+												{#if acct.commoditySymbol}
+													<span class="ml-1 text-violet-600 dark:text-violet-400">· {acct.commoditySymbol}</span>
+												{/if}
+											</td>
 											<td class="px-4 py-2.5 w-20">
 												{#if !acct.isActive}
 													<span class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">Inactive</span>

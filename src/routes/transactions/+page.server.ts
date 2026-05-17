@@ -1,7 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { and, desc, eq, inArray, like, or, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { accounts, accountTypes, journalEntries, transactions } from '$lib/server/db/schema';
+import { accounts, accountTypes, commodities, journalEntries, transactions } from '$lib/server/db/schema';
 import { createTransaction } from '$lib/server/finance';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -102,10 +102,16 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			name: accounts.name,
 			currency: accounts.currency,
 			typeName: accountTypes.name,
-			typeCategory: accountTypes.category
+			typeCategory: accountTypes.category,
+			commodityId: accounts.commodityId,
+			commoditySymbol: commodities.symbol,
+			commodityName: commodities.name,
+			commodityType: commodities.type,
+			commodityCurrency: commodities.currency
 		})
 		.from(accounts)
 		.innerJoin(accountTypes, eq(accountTypes.id, accounts.accountTypeId))
+		.leftJoin(commodities, eq(commodities.id, accounts.commodityId))
 		.where(eq(accounts.isActive, true))
 		.orderBy(accountTypes.name, accounts.name);
 
@@ -168,8 +174,21 @@ export const actions: Actions = {
 	create: async ({ request, locals }) => {
 		if (!locals.user) redirect(302, '/login');
 
-		const fields = parseFields(await request.formData());
+		const formData = await request.formData();
+		const fields = parseFields(formData);
 		if ('error' in fields) return fail(400, { error: fields.error });
+
+		const quantityRaw = formData.get('quantity');
+		const toAccount = db
+			.select({ commodityId: accounts.commodityId })
+			.from(accounts)
+			.where(eq(accounts.id, fields.toId))
+			.get();
+		const commodityId = toAccount?.commodityId ?? null;
+		const quantityInt =
+			commodityId && typeof quantityRaw === 'string' && quantityRaw
+				? Math.round(parseFloat(quantityRaw.replace(',', '.')) * 1000)
+				: null;
 
 		try {
 			createTransaction({
@@ -178,7 +197,8 @@ export const actions: Actions = {
 				notes: fields.notes ?? undefined,
 				entries: [
 					{ accountId: fields.fromId, amount: -fields.amountInt, currency: fields.currency },
-					{ accountId: fields.toId,   amount:  fields.amountInt, currency: fields.currency }
+					{ accountId: fields.toId,   amount:  fields.amountInt, currency: fields.currency,
+					  commodityId: commodityId ?? undefined, quantity: quantityInt ?? undefined }
 				]
 			});
 		} catch (e) {
