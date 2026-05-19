@@ -14,15 +14,28 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const accountIdParam = url.searchParams.get('accountId');
 	const filterAccountId = accountIdParam ? parseInt(accountIdParam, 10) : null;
 	const search = url.searchParams.get('search')?.trim() ?? '';
+	const filterYear  = url.searchParams.get('year')  ?? null;
+	const filterMonth = url.searchParams.get('month') ?? null;
 
-	// Build a WHERE clause combining both filters
+	// Build a WHERE clause combining all filters
 	const where = and(
 		filterAccountId ? eq(journalEntries.accountId, filterAccountId) : undefined,
 		search ? or(
 			like(transactions.description, `%${search}%`),
 			like(transactions.notes, `%${search}%`)
-		) : undefined
+		) : undefined,
+		filterYear  ? like(transactions.date, `${filterYear}%`) : undefined,
+		filterYear && filterMonth
+			? like(transactions.date, `${filterYear}-${filterMonth.padStart(2, '0')}%`)
+			: undefined
 	);
+
+	// Available years for the date filter card
+	const availableYears = (await db
+		.selectDistinct({ year: sql<string>`substr(${transactions.date}, 1, 4)` })
+		.from(transactions)
+		.orderBy(sql`substr(${transactions.date}, 1, 4) desc`)
+	).map(r => r.year);
 
 	const [{ total }] = await db
 		.select({ total: sql<number>`count(distinct ${transactions.id})` })
@@ -34,7 +47,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const safePage   = Math.min(page, totalPages);
 
 	const pageIds = (await db
-		.select({ id: transactions.id })
+		.selectDistinct({ id: transactions.id, date: transactions.date })
 		.from(transactions)
 		.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id))
 		.where(where)
@@ -122,7 +135,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		totalPages,
 		total,
 		filterAccountId,
-		search
+		search,
+		filterYear,
+		filterMonth,
+		availableYears
 	};
 };
 

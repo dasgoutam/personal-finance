@@ -68,6 +68,49 @@
 		return `?${params.toString()}`;
 	}
 
+	function pageUrl(p: number) {
+		const params = new URLSearchParams($page.url.searchParams);
+		params.set('page', String(p));
+		return `?${params.toString()}`;
+	}
+
+	function pageWindow(current: number, total: number): (number | '…')[] {
+		if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+		const pages: (number | '…')[] = [1];
+		if (current > 3) pages.push('…');
+		for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) pages.push(p);
+		if (current < total - 2) pages.push('…');
+		pages.push(total);
+		return pages;
+	}
+
+	const MONTHS = [
+		{ value: '01', label: 'Jan' }, { value: '02', label: 'Feb' },
+		{ value: '03', label: 'Mar' }, { value: '04', label: 'Apr' },
+		{ value: '05', label: 'May' }, { value: '06', label: 'Jun' },
+		{ value: '07', label: 'Jul' }, { value: '08', label: 'Aug' },
+		{ value: '09', label: 'Sep' }, { value: '10', label: 'Oct' },
+		{ value: '11', label: 'Nov' }, { value: '12', label: 'Dec' },
+	];
+
+	function dateFilterUrl(year: string | null, month: string | null) {
+		const params = new URLSearchParams($page.url.searchParams);
+		if (year)  params.set('year',  year);  else params.delete('year');
+		if (month) params.set('month', month); else params.delete('month');
+		params.set('page', '1');
+		return `?${params.toString()}`;
+	}
+
+	function onYearChange(e: Event) {
+		const val = (e.target as HTMLSelectElement).value;
+		goto(dateFilterUrl(val || null, null));
+	}
+
+	function onMonthChange(e: Event) {
+		const val = (e.target as HTMLSelectElement).value;
+		goto(dateFilterUrl(data.filterYear, val || null));
+	}
+
 	import { goto } from '$app/navigation';
 	let searchValue = data.search;
 	let searchTimer: ReturnType<typeof setTimeout>;
@@ -188,7 +231,50 @@
 <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex gap-6 items-start">
 
 	<!-- ── Sidebar filter ───────────────────────────────────────────────── -->
-	<aside class="w-80 flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden sticky top-6">
+	<div class="w-80 flex-shrink-0 flex flex-col gap-4 sticky top-6">
+
+	<!-- Date filter card -->
+	<div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+		<div class="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
+			<p class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Date</p>
+		</div>
+		<div class="px-3 py-2.5 flex items-center gap-2">
+			<select
+				class="flex-1 text-xs rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+				value={data.filterYear ?? ''}
+				on:change={onYearChange}>
+				<option value="">All years</option>
+				{#each data.availableYears as year}
+					<option value={year}>{year}</option>
+				{/each}
+			</select>
+			<select
+				class="flex-1 text-xs rounded border border-gray-200 dark:border-gray-600 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors
+					{data.filterYear
+						? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200'
+						: 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'}"
+				value={data.filterMonth ?? ''}
+				disabled={!data.filterYear}
+				on:change={onMonthChange}>
+				<option value="">All months</option>
+				{#each MONTHS as m}
+					<option value={m.value}>{m.label}</option>
+				{/each}
+			</select>
+			{#if data.filterYear}
+				<a href={dateFilterUrl(null, null)}
+					class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+					title="Clear date filter">
+					<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+					</svg>
+				</a>
+			{/if}
+		</div>
+	</div>
+
+	<!-- Account filter card -->
+	<aside class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
 		<div class="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
 			<p class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Filter</p>
 		</div>
@@ -222,6 +308,8 @@
 			{/each}
 		</nav>
 	</aside>
+
+	</div> <!-- end sidebar wrapper -->
 
 	<!-- ── Main content ──────────────────────────────────────────────────── -->
 	<div class="flex-1 min-w-0">
@@ -534,23 +622,52 @@
 				: `${data.total} transaction${data.total === 1 ? '' : 's'} · page ${data.page} of ${data.totalPages}`}
 		</p>
 		{#if !showStarredOnly && data.totalPages > 1}
+			{@const win = pageWindow(data.page, data.totalPages)}
 			<div class="flex items-center gap-1">
-				<a
-					href={filterUrl(data.filterAccountId).replace('page=1', `page=${data.page - 1}`)}
-					class="px-2.5 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 transition-colors
+				<!-- First -->
+				<a href={pageUrl(1)}
+					class="px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-700 transition-colors
 						{data.page <= 1
 							? 'pointer-events-none text-gray-300 dark:text-gray-600'
 							: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
-					aria-disabled={data.page <= 1}
-				>← Prev</a>
-				<a
-					href={filterUrl(data.filterAccountId).replace('page=1', `page=${data.page + 1}`)}
-					class="px-2.5 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 transition-colors
+					aria-disabled={data.page <= 1}>«</a>
+				<!-- Prev -->
+				<a href={pageUrl(data.page - 1)}
+					class="px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-700 transition-colors
+						{data.page <= 1
+							? 'pointer-events-none text-gray-300 dark:text-gray-600'
+							: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
+					aria-disabled={data.page <= 1}>‹</a>
+
+				<!-- Page window -->
+				{#each win as p}
+					{#if p === '…'}
+						<span class="px-1.5 py-1 text-xs text-gray-300 dark:text-gray-600">…</span>
+					{:else}
+						<a href={pageUrl(p)}
+							class="px-2.5 py-1 text-xs rounded border transition-colors
+								{p === data.page
+									? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-semibold'
+									: 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}">
+							{p}
+						</a>
+					{/if}
+				{/each}
+
+				<!-- Next -->
+				<a href={pageUrl(data.page + 1)}
+					class="px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-700 transition-colors
 						{data.page >= data.totalPages
 							? 'pointer-events-none text-gray-300 dark:text-gray-600'
 							: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
-					aria-disabled={data.page >= data.totalPages}
-				>Next →</a>
+					aria-disabled={data.page >= data.totalPages}>›</a>
+				<!-- Last -->
+				<a href={pageUrl(data.totalPages)}
+					class="px-2 py-1 text-xs rounded border border-gray-200 dark:border-gray-700 transition-colors
+						{data.page >= data.totalPages
+							? 'pointer-events-none text-gray-300 dark:text-gray-600'
+							: 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}"
+					aria-disabled={data.page >= data.totalPages}>»</a>
 			</div>
 		{/if}
 	</div>
