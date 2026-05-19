@@ -102,13 +102,11 @@
 	}
 
 	function onYearChange(e: Event) {
-		const val = (e.target as HTMLSelectElement).value;
-		goto(dateFilterUrl(val || null, null));
+		(e.currentTarget as HTMLSelectElement).form?.submit();
 	}
 
 	function onMonthChange(e: Event) {
-		const val = (e.target as HTMLSelectElement).value;
-		goto(dateFilterUrl(data.filterYear, val || null));
+		(e.currentTarget as HTMLSelectElement).form?.submit();
 	}
 
 	import { goto } from '$app/navigation';
@@ -238,29 +236,34 @@
 		<div class="px-3 py-2.5 border-b border-gray-100 dark:border-gray-700">
 			<p class="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">Date</p>
 		</div>
-		<div class="px-3 py-2.5 flex items-center gap-2">
-			<select
+		<form method="get" action="" class="px-3 py-2.5 flex items-center gap-2">
+			<!-- Preserve non-date params -->
+			{#if data.filterAccountId}<input type="hidden" name="accountId" value={data.filterAccountId}/>{/if}
+			{#if data.search}<input type="hidden" name="search" value={data.search}/>{/if}
+			<input type="hidden" name="page" value="1"/>
+
+			<select name="year"
 				class="flex-1 text-xs rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-				value={data.filterYear ?? ''}
 				on:change={onYearChange}>
 				<option value="">All years</option>
 				{#each data.availableYears as year}
-					<option value={year}>{year}</option>
+					<option value={year} selected={data.filterYear === year}>{year}</option>
 				{/each}
 			</select>
-			<select
+
+			<select name="month"
 				class="flex-1 text-xs rounded border border-gray-200 dark:border-gray-600 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors
 					{data.filterYear
 						? 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200'
 						: 'bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'}"
-				value={data.filterMonth ?? ''}
 				disabled={!data.filterYear}
 				on:change={onMonthChange}>
 				<option value="">All months</option>
 				{#each MONTHS as m}
-					<option value={m.value}>{m.label}</option>
+					<option value={m.value} selected={data.filterMonth === m.value}>{m.label}</option>
 				{/each}
 			</select>
+
 			{#if data.filterYear}
 				<a href={dateFilterUrl(null, null)}
 					class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
@@ -270,7 +273,7 @@
 					</svg>
 				</a>
 			{/if}
-		</div>
+		</form>
 	</div>
 
 	<!-- Account filter card -->

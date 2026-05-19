@@ -17,16 +17,19 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const filterYear  = url.searchParams.get('year')  ?? null;
 	const filterMonth = url.searchParams.get('month') ?? null;
 
-	// Build a WHERE clause combining all filters
-	const where = and(
-		filterAccountId ? eq(journalEntries.accountId, filterAccountId) : undefined,
+	// Filters that live on the transactions table itself (no join needed)
+	const txWhere = and(
 		search ? or(
 			like(transactions.description, `%${search}%`),
 			like(transactions.notes, `%${search}%`)
 		) : undefined,
-		filterYear  ? like(transactions.date, `${filterYear}%`) : undefined,
+		filterYear ? like(transactions.date, `${filterYear}%`) : undefined,
 		filterYear && filterMonth
 			? like(transactions.date, `${filterYear}-${filterMonth.padStart(2, '0')}%`)
+			: undefined,
+		// Account filter via EXISTS subquery — avoids join-row inflation
+		filterAccountId
+			? sql`exists (select 1 from journal_entries je where je.transaction_id = ${transactions.id} and je.account_id = ${filterAccountId})`
 			: undefined
 	);
 
@@ -38,19 +41,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	).map(r => r.year);
 
 	const [{ total }] = await db
-		.select({ total: sql<number>`count(distinct ${transactions.id})` })
+		.select({ total: sql<number>`count(*)` })
 		.from(transactions)
-		.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id))
-		.where(where);
+		.where(txWhere);
 
 	const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 	const safePage   = Math.min(page, totalPages);
 
 	const pageIds = (await db
-		.selectDistinct({ id: transactions.id, date: transactions.date })
+		.select({ id: transactions.id })
 		.from(transactions)
-		.leftJoin(journalEntries, eq(journalEntries.transactionId, transactions.id))
-		.where(where)
+		.where(txWhere)
 		.orderBy(desc(transactions.date), desc(transactions.id))
 		.limit(PAGE_SIZE)
 		.offset((safePage - 1) * PAGE_SIZE)
