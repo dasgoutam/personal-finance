@@ -1,6 +1,8 @@
 <script lang="ts">
 	import NetWorthCard from '$lib/components/dashboard/NetWorthCard.svelte'
 	import BankAccountsCard from '$lib/components/dashboard/BankAccountsCard.svelte'
+	import TotalInvestedCard from '$lib/components/dashboard/TotalInvestedCard.svelte'
+	import MonthlyBarCard from '$lib/components/dashboard/MonthlyBarCard.svelte'
 	import ExpensesPanel from '$lib/components/dashboard/ExpensesPanel.svelte'
 
 	export let data
@@ -17,12 +19,16 @@
 	<title>Dashboard — Personal Finance</title>
 </svelte:head>
 
-<div class="p-4 max-w-2xl space-y-4">
+<div class="p-6 max-w-7xl mx-auto space-y-4">
 
-	<div class="grid grid-cols-2 gap-4">
-		<NetWorthCard {netWorth} />
-		<BankAccountsCard accounts={bankAccounts} />
+	<div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+		<NetWorthCard {netWorth} prevNetWorth={data.prevNetWorth} />
+		<TotalInvestedCard rows={data.totalInvested} prevRows={data.prevTotalInvested} />
+		<MonthlyBarCard title="Monthly Income" months={data.monthlyIncome} />
+		<MonthlyBarCard title="Monthly Expenses" months={data.monthlyExpenses} />
 	</div>
+
+	<BankAccountsCard accounts={bankAccounts} />
 
 	<ExpensesPanel
 		grouping={data.expenseGrouping}
