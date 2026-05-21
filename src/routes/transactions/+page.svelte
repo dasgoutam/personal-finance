@@ -184,6 +184,29 @@
 
 	function cancelEdit() { editingId = null; }
 
+	// ── Balance snapshot panel ───────────────────────────────────────────────
+
+	type BalanceRow = { accountId: number; accountName: string; currency: string; typeName: string; balance: number };
+
+	let snapshotTx: { id: number; date: string; description: string } | null = null;
+	let snapshotRows: BalanceRow[] = [];
+	let snapshotLoading = false;
+
+	async function selectRow(tx: (typeof data.txList)[number]) {
+		if (snapshotTx?.id === tx.id) { snapshotTx = null; return; }
+		snapshotTx = { id: tx.id, date: tx.date, description: tx.description };
+		snapshotLoading = true;
+		snapshotRows = [];
+		try {
+			const res = await fetch(`/api/balances-at?date=${tx.date}`);
+			snapshotRows = await res.json();
+		} finally {
+			snapshotLoading = false;
+		}
+	}
+
+	$: snapshotByAccountId = Object.fromEntries(snapshotRows.map((r) => [r.accountId, r]));
+
 	// ── Display helpers ──────────────────────────────────────────────────────
 
 	type Entry = (typeof data.txList)[number]['entries'][number];
@@ -220,11 +243,15 @@
 </svelte:head>
 
 <!--
-  Two hidden forms outside the table.
-  Table inputs reference them via the HTML5 `form` attribute.
+  Hidden forms outside the table (HTML5 `form` attribute links inputs to these).
 -->
 <form id="new-tx"  method="POST" action="?/create"></form>
 <form id="edit-tx" method="POST" action="?/update"></form>
+{#each data.txList as tx}
+	<form id="delete-tx-{tx.id}" method="POST" action="?/delete">
+		<input type="hidden" name="txId" value={tx.id}/>
+	</form>
+{/each}
 
 <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex gap-6 items-start">
 
@@ -297,12 +324,21 @@
 					{#each cat.types as typeGroup}
 						{#if expandedTypes.has(typeGroup.typeName)}
 							{#each typeGroup.accounts as acct}
+								{@const snap = typeGroup.typeName === 'Bank' ? snapshotByAccountId[acct.id] : null}
 								<a href={filterUrl(acct.id)}
-									class="flex items-center pl-5 pr-3 py-1 transition-colors
+									class="flex items-center justify-between pl-5 pr-3 py-1 transition-colors
 										{data.filterAccountId === acct.id
 											? clr.active + ' font-medium'
 											: clr.link + ' hover:bg-gray-50 dark:hover:bg-gray-700'}">
-									{acct.name}
+									<span>{acct.name}</span>
+									{#if snapshotLoading && typeGroup.typeName === 'Bank'}
+										<span class="text-gray-300 dark:text-gray-600 text-[10px] font-mono">…</span>
+									{:else if snap}
+										<span class="text-[10px] font-mono tabular-nums flex-shrink-0
+											{snap.balance < 0 ? 'text-rose-500 dark:text-rose-400' : 'text-gray-500 dark:text-gray-400'}">
+											{fmtAmount(snap.balance / 100, acct.currency)}
+										</span>
+									{/if}
 								</a>
 							{/each}
 						{/if}
@@ -530,14 +566,21 @@
 
 								<td class="px-2 py-2"></td>
 								<td class="px-2 py-2">
-									<div class="flex flex-col gap-1">
+									<div class="flex items-center gap-1">
 										<button form="edit-tx" type="submit"
-											class="w-full rounded-lg bg-green-600 px-2 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors focus:outline-none">
+											class="rounded-lg bg-green-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors focus:outline-none">
 											Save
 										</button>
 										<button type="button" on:click={cancelEdit}
-											class="w-full rounded-lg bg-gray-100 dark:bg-gray-700 px-2 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 transition-colors">
+											class="rounded-lg bg-gray-100 dark:bg-gray-700 px-2.5 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
 											Cancel
+										</button>
+										<button type="submit" form="delete-tx-{tx.id}"
+											title="Delete transaction"
+											class="rounded-lg p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+											<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+												<path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+											</svg>
 										</button>
 									</div>
 								</td>
@@ -545,7 +588,9 @@
 
 						{:else}
 							<!-- ── Display row ───────────────────────────────────────── -->
-							<tr class="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+							<tr on:click={() => selectRow(tx)}
+								class="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer
+									{snapshotTx?.id === tx.id ? 'bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-50 dark:hover:bg-indigo-900/20' : ''}">
 
 								<td class="px-3 py-3 text-gray-400 dark:text-gray-500 font-mono text-xs whitespace-nowrap">
 									{fmtDate(tx.date)}
@@ -676,4 +721,6 @@
 	</div>
 
 	</div> <!-- end main content -->
+
+
 </div>

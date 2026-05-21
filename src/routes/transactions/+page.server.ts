@@ -273,5 +273,19 @@ export const actions: Actions = {
 		}
 
 		redirect(302, '/transactions');
+	},
+
+	delete: async ({ request, locals }) => {
+		if (!locals.user) redirect(302, '/login');
+
+		const data = await request.formData();
+		const txIdRaw = data.get('txId');
+		if (typeof txIdRaw !== 'string' || !txIdRaw) return fail(400, { error: 'Missing transaction ID.' });
+		const txId = parseInt(txIdRaw, 10);
+
+		// journal_entries are cascade-deleted via FK
+		db.delete(transactions).where(eq(transactions.id, txId)).run();
+
+		redirect(302, '/transactions');
 	}
 };
