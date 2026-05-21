@@ -449,7 +449,7 @@
 						{#if newLinkedCommodity}
 							<div class="flex items-center gap-1">
 								<input form="new-tx" name="quantity" type="number" inputmode="decimal"
-									min="0.001" step="0.001" placeholder="units"
+									min="0.000001" step="any" placeholder="units"
 									bind:value={newQuantity}
 									class="w-20 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 dark:text-white px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
 								<span class="text-xs text-gray-400">×</span>

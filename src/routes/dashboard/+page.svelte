@@ -60,8 +60,8 @@
 	$: investmentAccounts = data.accountBalances.filter(a => a.commoditySymbol != null)
 
 	function fmtUnits(units: number, symbol: string) {
-		const qty = units / 1000;
-		return `${qty.toLocaleString('de-DE', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} ${symbol}`;
+		const qty = units / 1_000_000;
+		return `${qty.toLocaleString('de-DE', { minimumFractionDigits: 3, maximumFractionDigits: 6 })} ${symbol}`;
 	}
 	$: netWorth = data.accountBalances.reduce((sum, a) => {
 		if (a.typeCategory === 'asset')     return sum + a.balance

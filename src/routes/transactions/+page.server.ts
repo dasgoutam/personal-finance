@@ -204,7 +204,7 @@ export const actions: Actions = {
 		const commodityId = toAccount?.commodityId ?? null;
 		const quantityInt =
 			commodityId && typeof quantityRaw === 'string' && quantityRaw
-				? Math.round(parseFloat(quantityRaw.replace(',', '.')) * 1000)
+				? Math.round(parseFloat(quantityRaw.replace(',', '.')) * 1_000_000)
 				: null;
 
 		try {

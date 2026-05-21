@@ -3,7 +3,7 @@ export interface ParsedPosting {
 	amount: number | null; // in cents, null = auto-balance
 	currency: string;
 	commoditySymbol?: string;
-	quantity?: number; // milli-units
+	quantity?: number; // micro-units (× 1_000_000)
 }
 
 export interface ParsedTransaction {
@@ -116,7 +116,7 @@ function parseAmountSpec(
 			amount: Math.round(quantityRaw * priceRaw * 100),
 			currency,
 			commoditySymbol: symbol,
-			quantity: Math.round(quantityRaw * 1000)
+			quantity: Math.round(quantityRaw * 1_000_000)
 		};
 	}
 
