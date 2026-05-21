@@ -4,6 +4,7 @@
 	import TotalInvestedCard from '$lib/components/dashboard/TotalInvestedCard.svelte'
 	import MonthlyBarCard from '$lib/components/dashboard/MonthlyBarCard.svelte'
 	import ExpensesPanel from '$lib/components/dashboard/ExpensesPanel.svelte'
+	import PortfolioBreakdownPanel from '$lib/components/dashboard/PortfolioBreakdownPanel.svelte'
 
 	export let data
 
@@ -28,13 +29,16 @@
 		<MonthlyBarCard title="Monthly Expenses" months={data.monthlyExpenses} />
 	</div>
 
-	<BankAccountsCard accounts={bankAccounts} />
+	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+		<PortfolioBreakdownPanel accounts={data.accountBalances} />
+	</div>
+		<ExpensesPanel
+			grouping={data.expenseGrouping}
+			mode={data.mode}
+			month={data.month}
+			year={data.year}
+		/>	
 
-	<ExpensesPanel
-		grouping={data.expenseGrouping}
-		mode={data.mode}
-		month={data.month}
-		year={data.year}
-	/>
+	<BankAccountsCard accounts={bankAccounts} />
 
 </div>
