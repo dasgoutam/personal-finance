@@ -61,15 +61,21 @@
 	}
 
 	function filterUrl(accountId: number | null) {
-		const params = new URLSearchParams($page.url.searchParams);
-		if (accountId === null) params.delete('accountId');
-		else params.set('accountId', String(accountId));
+		const params = new URLSearchParams();
+		if (accountId !== null) params.set('accountId', String(accountId));
+		if (data.search) params.set('search', data.search);
+		if (data.filterYear) params.set('year', data.filterYear);
+		if (data.filterYear && data.filterMonth) params.set('month', data.filterMonth);
 		params.set('page', '1');
 		return `?${params.toString()}`;
 	}
 
 	function pageUrl(p: number) {
-		const params = new URLSearchParams($page.url.searchParams);
+		const params = new URLSearchParams();
+		if (data.filterAccountId) params.set('accountId', String(data.filterAccountId));
+		if (data.search) params.set('search', data.search);
+		if (data.filterYear) params.set('year', data.filterYear);
+		if (data.filterYear && data.filterMonth) params.set('month', data.filterMonth);
 		params.set('page', String(p));
 		return `?${params.toString()}`;
 	}
@@ -94,9 +100,11 @@
 	];
 
 	function dateFilterUrl(year: string | null, month: string | null) {
-		const params = new URLSearchParams($page.url.searchParams);
-		if (year)  params.set('year',  year);  else params.delete('year');
-		if (month) params.set('month', month); else params.delete('month');
+		const params = new URLSearchParams();
+		if (data.filterAccountId) params.set('accountId', String(data.filterAccountId));
+		if (data.search) params.set('search', data.search);
+		if (year) params.set('year', year);
+		if (year && month) params.set('month', month);
 		params.set('page', '1');
 		return `?${params.toString()}`;
 	}
