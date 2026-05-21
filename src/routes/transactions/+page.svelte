@@ -147,10 +147,10 @@
 
 	$: if (!newLinkedCommodity) { newQuantity = ''; newAmountValue = ''; }
 
-	$: if (newUnitPrice && newQuantity) {
-		const q = parseFloat(newQuantity.replace(',', '.'));
-		const p = parseFloat(newUnitPrice.replace(',', '.'));
-		if (!isNaN(q) && !isNaN(p) && q > 0 && p > 0) newAmountValue = (q * p).toFixed(2);
+	$: {
+		const q = parseFloat(String(newQuantity).replace(',', '.'));
+		const p = parseFloat(String(newUnitPrice).replace(',', '.'));
+		newAmountValue = (!isNaN(q) && !isNaN(p) && q > 0 && p > 0) ? (q * p).toFixed(2) : '';
 	}
 
 	// ── Edit-row state ───────────────────────────────────────────────────────
@@ -245,7 +245,9 @@
 <!--
   Hidden forms outside the table (HTML5 `form` attribute links inputs to these).
 -->
-<form id="new-tx"  method="POST" action="?/create"></form>
+<form id="new-tx" method="POST" action="?/create"
+	on:submit={(e) => { if (newLinkedCommodity && !newAmountValue) { e.preventDefault(); alert('Enter both units and price to calculate the amount.'); } }}
+></form>
 <form id="edit-tx" method="POST" action="?/update"></form>
 {#each data.txList as tx}
 	<form id="delete-tx-{tx.id}" method="POST" action="?/delete">
@@ -455,7 +457,7 @@
 									min="0.01" step="0.01" placeholder="price"
 									bind:value={newUnitPrice}
 									class="w-20 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-700 dark:text-white px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
-								<input form="new-tx" name="amount" type="hidden" value={newAmountValue} />
+								<input form="new-tx" name="amount" type="hidden" bind:value={newAmountValue} />
 								<input form="new-tx" type="hidden" name="currency" value={newCurrency} />
 								<span class="text-xs text-gray-500 dark:text-gray-400 font-mono">{newAmountValue ? `${newSymbol}${newAmountValue}` : '—'}</span>
 							</div>
