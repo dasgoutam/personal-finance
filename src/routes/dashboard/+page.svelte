@@ -32,10 +32,10 @@
 
 	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 		<PortfolioBreakdownPanel accounts={data.accountBalances} />
-		<BankAccountsCard accounts={bankAccounts} />
+		<InvestmentBreakdownPanel rows={data.investmentBreakdown} totalXirr={data.totalXirr} />
 	</div>
 
-	<InvestmentBreakdownPanel rows={data.investmentBreakdown} totalXirr={data.totalXirr} />
+	
 
 	<ExpensesPanel
 			grouping={data.expenseGrouping}
