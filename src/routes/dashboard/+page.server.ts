@@ -28,13 +28,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const year  = url.searchParams.get('year')  ?? String(now.getFullYear())
 	const month = url.searchParams.get('month') ?? String(now.getMonth() + 1).padStart(2, '0')
 
-	const [networth, income, expenses, investments, portfolioHistory] = await Promise.all([
+	const [networth, income, expenses, investments] = await Promise.all([
 		loadNetWorth(prevMonthEndStr),
 		loadIncome(last3Months),
 		loadExpenses(mode, year, month),
 		loadInvestments(prevMonthEndStr),
-		loadPortfolioHistory('SXRV.DE'),
 	])
+
+	// Use the same live market values as the investments table so XIRRs match
+	const livePortfolioValue = investments.investmentBreakdown
+		.reduce((s, r) => s + (r.marketValue ?? r.costBasis), 0)
+	const portfolioHistory = await loadPortfolioHistory('SXRV.DE', livePortfolioValue)
 
 	return {
 		...networth,

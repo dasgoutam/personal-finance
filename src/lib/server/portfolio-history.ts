@@ -29,7 +29,7 @@ export type PortfolioHistoryResult = {
 
 export const DEFAULT_BENCHMARK = '^GSPC'
 
-export async function loadPortfolioHistory(benchmarkTicker = DEFAULT_BENCHMARK): Promise<PortfolioHistoryResult> {
+export async function loadPortfolioHistory(benchmarkTicker = DEFAULT_BENCHMARK, livePortfolioValue?: number): Promise<PortfolioHistoryResult> {
 	const empty: PortfolioHistoryResult = { points: [], portfolioXirr: null, benchmarkXirr: null, benchmarkTicker }
 
 	// 1. Get all investment accounts with commodity symbols
@@ -204,7 +204,7 @@ export async function loadPortfolioHistory(benchmarkTicker = DEFAULT_BENCHMARK):
 		benchmarkXirr = computeXirr(benchmarkCfs)
 	}
 
-	const currentPortfolioValue = points.at(-1)?.portfolioValue ?? 0
+	const currentPortfolioValue = livePortfolioValue ?? points.at(-1)?.portfolioValue ?? 0
 	let portfolioXirr: number | null = null
 	if (currentPortfolioValue > 0) {
 		const portfolioCfs = [
