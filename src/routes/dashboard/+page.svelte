@@ -6,6 +6,7 @@
 	import ExpensesPanel from '$lib/components/dashboard/ExpensesPanel.svelte'
 	import PortfolioBreakdownPanel from '$lib/components/dashboard/PortfolioBreakdownPanel.svelte'
 	import InvestmentBreakdownPanel from '$lib/components/dashboard/InvestmentBreakdownPanel.svelte'
+	import PortfolioHistoryChart from '$lib/components/dashboard/PortfolioHistoryChart.svelte'
 
 	export let data
 
@@ -35,14 +36,16 @@
 		<InvestmentBreakdownPanel rows={data.investmentBreakdown} totalXirr={data.totalXirr} />
 	</div>
 
-	
+	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">	
+		<ExpensesPanel
+				grouping={data.expenseGrouping}
+				mode={data.mode}
+				month={data.month}
+				year={data.year}
+			/>	
+	</div>
+	<PortfolioHistoryChart history={data.portfolioHistory} />
 
-	<ExpensesPanel
-			grouping={data.expenseGrouping}
-			mode={data.mode}
-			month={data.month}
-			year={data.year}
-		/>	
 
 	<BankAccountsCard accounts={bankAccounts} />
 

@@ -4,6 +4,7 @@ import { loadNetWorth } from '$lib/server/networth';
 import { loadIncome } from '$lib/server/income';
 import { loadExpenses } from '$lib/server/expenses';
 import { loadInvestments } from '$lib/server/investments';
+import { loadPortfolioHistory } from '$lib/server/portfolio-history';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
@@ -27,11 +28,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const year  = url.searchParams.get('year')  ?? String(now.getFullYear())
 	const month = url.searchParams.get('month') ?? String(now.getMonth() + 1).padStart(2, '0')
 
-	const [networth, income, expenses, investments] = await Promise.all([
+	const [networth, income, expenses, investments, portfolioHistory] = await Promise.all([
 		loadNetWorth(prevMonthEndStr),
 		loadIncome(last3Months),
 		loadExpenses(mode, year, month),
 		loadInvestments(prevMonthEndStr),
+		loadPortfolioHistory('SXRV.DE'),
 	])
 
 	return {
@@ -39,6 +41,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		...income,
 		...expenses,
 		...investments,
+		portfolioHistory,
 		mode, year, month,
 	};
 };
