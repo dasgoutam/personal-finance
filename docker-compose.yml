@@ -17,7 +17,7 @@ services:
       FINANCE_PASSWORD: ${FINANCE_PASSWORD:-changeme}
       ORIGIN: ${ORIGIN:-http://localhost:3000}
     volumes:
-      - /mnt/storage/system/personal-finance:/data
+      - ${DATA_DIR:-./data}:/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
