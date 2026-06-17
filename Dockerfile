@@ -1,5 +1,5 @@
 # ---- Build stage -----------------------------------------------------------
-FROM --platform=linux/arm64 node:20-alpine AS builder
+FROM node:20-alpine AS builder
 
 # Native build tools for better-sqlite3 and @node-rs/argon2
 RUN apk add --no-cache python3 make g++
@@ -13,7 +13,7 @@ COPY . .
 RUN npm run build
 
 # ---- Production stage ------------------------------------------------------
-FROM --platform=linux/arm64 node:20-alpine AS runner
+FROM node:20-alpine AS runner
 
 # Same native tools needed to compile better-sqlite3 at install time
 RUN apk add --no-cache python3 make g++

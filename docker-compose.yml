@@ -15,9 +15,9 @@ services:
       # Override these via a .env file or shell environment before deploying
       FINANCE_USERNAME: ${FINANCE_USERNAME:-admin}
       FINANCE_PASSWORD: ${FINANCE_PASSWORD:-changeme}
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
     volumes:
-      # Named volume keeps the SQLite file across container rebuilds
-      - finance_data:/data
+      - /mnt/storage/system/personal-finance:/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
@@ -25,7 +25,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-
-volumes:
-  finance_data:
-    driver: local
